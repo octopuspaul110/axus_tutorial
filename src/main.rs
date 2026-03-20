@@ -1,8 +1,9 @@
 #![allow(unused)]
 
 use std::net::SocketAddr;
-use axum::{Router, extract::{Path, Query}, response::{Html, IntoResponse}, routing::{get, get_service}};
+use axum::{Router, extract::{Path, Query}, middleware, response::{Html, IntoResponse, Response}, routing::{get, get_service}};
 use serde::Deserialize;
+use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
 
 pub use self::error::{Error,Result};
@@ -15,9 +16,11 @@ async fn main() {
     let routes_all = Router::new()
     .merge(routes_hello())
     .merge(web::routes_login::routes())
+    .layer(middleware::map_response(main_response_mapper))
+    .layer(CookieManagerLayer::new())
     .fallback_service(routes_static());
 
-    // start server
+    // region:  --- Start server
     let addr = SocketAddr::from(([127,0,0,1],8080));
     println!("->> Listening on {addr}\n");
 
@@ -26,6 +29,13 @@ async fn main() {
     .await
     .unwrap();
 }
+async fn main_response_mapper(res : Response) -> Response {
+    println!("->> {:<12} - main_response_mapper","RES_MAPPER");
+
+    println!();
+    res
+}
+
 fn routes_static() -> Router {
     Router::new().nest_service("/", get_service(ServeDir::new("./")))
 }
