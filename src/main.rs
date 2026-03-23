@@ -1,10 +1,12 @@
 #![allow(unused)]
 
 use std::net::SocketAddr;
-use axum::{Router, extract::{Path, Query}, middleware, response::{Html, IntoResponse, Response}, routing::{get, get_service}};
+use axum::{Json, Router, extract::{Path, Query}, middleware, response::{Html, IntoResponse, Response}, routing::{get, get_service}};
 use serde::Deserialize;
+use serde_json::json;
 use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
+use uuid::Uuid;
 
 use crate::model::ModelController;
 use web::routes_ticket;
@@ -27,6 +29,10 @@ async fn main() -> Result<()> {
     .merge(web::routes_login::routes())
     .nest("/api",web::routes_ticket::routes(mc.clone()))
     .layer(middleware::map_response(main_response_mapper))
+    .layer(middleware::from_fn_with_state(
+        mc.clone(),
+        web::mw_auth::mw_ctx_resolver,
+    ))
     .layer(CookieManagerLayer::new())
     .fallback_service(routes_static());
 
@@ -44,8 +50,27 @@ async fn main() -> Result<()> {
 
 async fn main_response_mapper(res : Response) -> Response {
     println!("->> {:<12} - main_response_mapper","RES_MAPPER");
+    let uuid = Uuid::new_v4();
 
-    println!();
+    let service_error = res.extensions().get::<Error>();
+    let client_status_error = service_error.map(|se|{se.client_status_and_error()});
+
+    let error_response = client_status_error
+    .as_ref()
+    .map(|(status_code, client_error)| {
+        let client_error_body = json!({
+            "error" :{
+                "type" : client_error.as_ref(),
+                "req_uuid" : uuid.to_string(),
+            }
+        });
+        println!("  -> client_error_body:  {client_error_body}");
+
+        println!("      ->> server log time -{uuid} - Error: {service_error:?}");
+
+        (*status_code,Json(client_error_body)).into_response()
+    });
+    
     res
 }
 
