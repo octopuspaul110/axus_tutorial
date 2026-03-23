@@ -11,6 +11,7 @@ use web::routes_ticket;
 
 pub use self::error::{Error,Result};
 
+mod ctx;
 mod error;
 mod model;
 mod web;
@@ -65,7 +66,7 @@ struct HelloParams{
     name : Option<String>
 }
 async fn handler_hello(Query(params) : Query<HelloParams>) -> impl IntoResponse {
-    println!("->> {:<12} -handler_hello","HANDLER");
+    println!("->> {:<12} - handler_hello","HANDLER");
 
     let name = params.name.as_deref().unwrap_or("World!");
     Html(format!("Hello <strong>{name}!!!</strong>"))
@@ -73,7 +74,7 @@ async fn handler_hello(Query(params) : Query<HelloParams>) -> impl IntoResponse 
 
 // e.g hello2/mike
 async fn handler_hello2(Path(name) : Path<String>) -> impl IntoResponse {
-    println!("->> {:<12} -handler_hello","HANDLER");
+    println!("->> {:<12} - handler_hello","HANDLER");
 
     Html(format!("Hello <strong>{name}!!!</strong>"))
 }
