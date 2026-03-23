@@ -19,6 +19,8 @@ mod web;
 async fn main() -> Result<()> {
 
     let mc = ModelController::new().await?;
+
+    let routes_api = web::routes_ticket::routes(mc.clone()).route_layer(middleware::from_fn(web::mw_auth::mw_require_auth));
     let routes_all = Router::new()
     .merge(routes_hello())
     .merge(web::routes_login::routes())
